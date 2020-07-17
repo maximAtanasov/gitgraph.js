@@ -185,7 +185,7 @@ class GitgraphUserApi<TNode> {
    * @experimental
    * @param data JSON from `git2json` output
    */
-  public import(data: unknown) {
+  public import(data: unknown, isChronological?: boolean, validate?: boolean) {
     const invalidData = new Error(
       "Only `git2json` format is supported for imported data.",
     );
@@ -197,17 +197,20 @@ class GitgraphUserApi<TNode> {
       throw invalidData;
     }
 
-    const areDataValid = data.every((options) => {
-      return (
-        typeof options === "object" &&
-        typeof options.author === "object" &&
-        Array.isArray(options.refs)
-      );
-    });
+    if (validate) {
+      const areDataValid = data.every((options) => {
+        return (
+          typeof options === "object" &&
+          typeof options.author === "object" &&
+          Array.isArray(options.refs)
+        );
+      });
 
-    if (!areDataValid) {
-      throw invalidData;
+      if (!areDataValid) {
+        throw invalidData;
+      }
     }
+
 
     const commitOptionsList: Array<
       CommitOptions<TNode> & { refs: string[] }
@@ -222,10 +225,11 @@ class GitgraphUserApi<TNode> {
           },
         },
         author: `${options.author.name} <${options.author.email}>`,
-      }))
-      // Git2json outputs is reverse-chronological.
-      // We need to commit it chronological order.
-      .reverse();
+      }));
+    
+    if (!isChronological) {
+      commitOptionsList.reverse();
+    }
 
     // Use validated `value`.
     this.clear();
